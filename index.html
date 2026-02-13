@@ -3,577 +3,661 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=no">
-    <title>falling elements · chemistry match</title>
+    <title>Periodic table · drag & match</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             font-family: 'Segoe UI', 'Arial', sans-serif;
-            user-select: none; /* better for touch */
+            user-select: none;
         }
 
         body {
-            background: linear-gradient(145deg, #0b3b3f, #1d5a5c);
+            background: linear-gradient(145deg, #0f2e3a, #1a4740);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 10px;
-            touch-action: pan-y; /* preserve vertical scroll if needed, but we want game board */
+            padding: 12px;
+            touch-action: pan-y;
         }
 
-        /* main game board — fits one page */
-        .game-lab {
-            max-width: 1300px;
+        /* MAIN CONTAINER — RESPECTS SCREEN SIZE */
+        .game-container {
             width: 100%;
-            background: #2a6b6e;
-            background-image: radial-gradient(circle at 20% 30%, #389599, #1d5457);
-            border-radius: 50px 50px 30px 30px;
-            box-shadow: 0 20px 30px #0a2e30;
-            padding: 16px 18px;
-            border-bottom: 10px solid #0e494b;
+            max-width: 1400px;
+            background: #204e4a;
+            background: radial-gradient(circle at 20% 30%, #31736e, #154542);
+            border-radius: 60px 60px 40px 40px;
+            box-shadow: 0 20px 35px #071e1e;
+            padding: 20px;
+            border-bottom: 12px solid #0d3d3a;
             display: flex;
             flex-direction: column;
-            height: 95vh; /* fit one screen */
-            max-height: 950px;
+            height: 98vh;
+            max-height: 1000px;
         }
 
-        .title-area {
+        /* HEADER – TEAM SCORE & ROUND */
+        .game-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #052c2e;
-            padding: 10px 25px;
-            border-radius: 60px;
-            color: #f5ffb2;
-            border-bottom: 6px solid #698b4c;
-            margin-bottom: 8px;
+            background: #062d2b;
+            padding: 12px 30px;
+            border-radius: 70px;
+            color: #fdffc4;
+            border-bottom: 8px solid #6f9e5f;
+            margin-bottom: 12px;
             flex-wrap: wrap;
         }
 
-        .title-area h1 {
-            font-size: 1.8rem;
+        .title {
+            font-size: 2rem;
             letter-spacing: 6px;
-            text-shadow: 0 3px 0 #1f4935;
+            font-weight: 700;
+            text-shadow: 0 4px 0 #124d3a;
         }
 
-        .score-box {
-            background: #0b1f1c;
-            padding: 8px 28px;
+        .team-score {
+            background: #1a352c;
+            padding: 8px 30px;
             border-radius: 50px;
-            font-size: 1.7rem;
+            font-size: 1.9rem;
             font-weight: bold;
-            color: #ffefb2;
-            box-shadow: inset 0 0 0 3px #d8e476;
+            color: #fff8b5;
+            box-shadow: inset 0 0 0 4px #edd46b;
+            display: flex;
+            gap: 30px;
         }
 
-        /* interactive zone: falling area + name dock */
-        .play-zone {
+        .score-badge {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* MAIN PLAY AREA: GRID (LEFT) + ELEMENT DECK (RIGHT) */
+        .play-area {
             display: flex;
             flex: 1;
-            min-height: 0;  /* flex restriction */
-            gap: 12px;
+            min-height: 0;
+            gap: 20px;
             flex-wrap: wrap;
         }
 
-        /* left side: falling sky */
-        .falling-sky {
-            flex: 2 1 500px;
-            background: #a1d6d0;
-            background: linear-gradient(180deg, #afe0dc, #6daaa5);
-            border-radius: 60px 60px 30px 30px;
-            box-shadow: inset 0 -10px 0 #367c7a, inset 0 0 30px #c2ffff;
-            border: 5px solid #fefed7;
-            position: relative;
-            overflow: hidden;  /* falling elements confined */
-            min-height: 300px;
-            touch-action: none; /* we handle dragging */
-        }
-
-        /* container for falling element images */
-        .elements-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-        }
-
-        /* falling element symbol card */
-        .element-card {
-            position: absolute;
-            width: 85px;
-            height: 85px;
-            background: radial-gradient(circle at 30% 30%, #ffeab5, #fbcf7c);
-            border-radius: 30% 70% 50% 50% / 40% 40% 60% 60%;
-            box-shadow: 0 12px 0 #b87333, 0 15px 25px black, inset 0 -5px 8px rgba(0,0,0,0.2);
-            border: 5px solid #ffd78c;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 2.8rem;
-            font-weight: 800;
-            color: #0a3055;
-            text-shadow: 0 2px 5px white;
-            transform: rotate(5deg);
-            transition: transform 0.1s;
-            cursor: grab;
-            touch-action: none;
-            z-index: 20;
-        }
-
-        .element-card:active {
-            cursor: grabbing;
-            transform: scale(1.08) rotate(8deg);
-        }
-
-        /* bottom dock: element names — interactive targets */
-        .name-dock {
-            flex: 1 1 260px;
-            background: #2a554b;
-            background: linear-gradient(145deg, #3e6b60, #1f463f);
-            border-radius: 50px 50px 30px 30px;
-            padding: 16px 12px;
-            box-shadow: inset 0 -8px 0 #14322e, inset 0 4px 12px #c6ffcf;
-            border: 4px solid #fbffbc;
+        /* ---------- PERIODIC TABLE GRID (CSS GRID) ---------- */
+        .table-section {
+            flex: 3 1 700px;
+            background: #17423d;
+            border-radius: 50px;
+            padding: 18px;
+            box-shadow: inset 0 -8px 0 #0c2f2c, inset 0 0 20px #6cc9c0;
+            border: 6px solid #ffe68f;
             display: flex;
             flex-direction: column;
         }
 
-        .name-dock h2 {
-            color: #fffed8;
-            text-align: center;
-            font-size: 1.7rem;
-            border-bottom: 5px solid #fedb5f;
-            padding-bottom: 10px;
+        .grid-title {
+            color: #fffece;
+            font-size: 1.8rem;
             margin-bottom: 12px;
-            text-shadow: 0 3px 0 #215d42;
-            letter-spacing: 3px;
+            text-align: center;
+            background: #1a534b;
+            padding: 6px;
+            border-radius: 50px;
+            border-bottom: 6px solid #b6ad60;
         }
 
-        .name-grid {
+        .periodic-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);  /* 6 columns for simplicity */
+            gap: 12px;
+            flex: 1;
+            background: #0e403f;
+            padding: 16px;
+            border-radius: 40px;
+            box-shadow: inset 0 0 0 4px #7dad73;
+        }
+
+        /* each cell in periodic table */
+        .grid-cell {
+            background: #213d3a;
+            border-radius: 20px;
+            box-shadow: inset 0 -6px 0 #0e2624, inset 0 2px 10px #a5e0d0;
+            border: 3px solid #fbeaa0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1 / 1;
+            min-height: 70px;
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #fffcd1;
+            position: relative;
+            transition: 0.1s;
+            padding: 4px;
+        }
+
+        /* occupied cell — shows element */
+        .cell-occupied {
+            background: radial-gradient(circle at 30% 30%, #fff4b5, #f7cf7c);
+            color: #072a3d;
+            border: 5px solid #ffe180;
+            box-shadow: 0 0 0 3px #ffd966, inset 0 -4px 0 #b89b40;
+        }
+
+        .cell-occupied .element-symbol {
+            font-size: 2.2rem;
+            font-weight: 800;
+        }
+
+        .cell-occupied .element-name {
+            font-size: 0.9rem;
+            background: #386035;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 30px;
+            margin-top: 4px;
+        }
+
+        /* ---------- ELEMENT DECK (right side) ---------- */
+        .element-deck {
+            flex: 1 1 260px;
+            background: #1f534a;
+            border-radius: 60px 60px 30px 30px;
+            padding: 20px 16px;
+            box-shadow: inset 0 -8px 0 #0e3532, inset 0 6px 20px #baffd0;
+            border: 6px solid #ffe694;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .deck-header {
+            color: #fffdbb;
+            font-size: 1.9rem;
+            text-align: center;
+            border-bottom: 6px solid #fbff8e;
+            padding-bottom: 10px;
+            margin-bottom: 18px;
+            text-shadow: 0 3px 0 #27633a;
+        }
+
+        /* element cards container — scrollable */
+        .cards-container {
             display: flex;
             flex-direction: column;
             gap: 18px;
             flex: 1;
             overflow-y: auto;
-            padding-right: 5px;
+            padding-right: 6px;
         }
 
-        /* each name target — drop zone */
-        .name-target {
-            background: #ebf8d9;
-            padding: 18px 12px;
-            border-radius: 50px;
-            font-size: 1.9rem;
-            font-weight: bold;
-            color: #022c2a;
-            text-align: center;
-            border-bottom: 9px solid #8fa34b;
-            box-shadow: inset 0 2px 10px white, 0 8px 0 #4e6130;
-            transition: 0.05s;
+        /* draggable element card — LARGE, COLOR-CODED */
+        .element-card {
+            background: radial-gradient(circle at 20% 40%, #ffe6a3, #facf7c);
+            padding: 22px 12px;
+            border-radius: 70px;
+            border-bottom: 12px solid #a4662e;
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 15px;
-            letter-spacing: 2px;
-            background: radial-gradient(circle at 10% 40%, #ffffdd, #cfdba1);
-            touch-action: none; /* avoid scroll interference */
-        }
-
-        .name-target span {
-            background: #3e4f2b;
-            color: #fffed1;
-            padding: 5px 20px;
-            border-radius: 40px;
-            font-size: 1.6rem;
-            border-bottom: 5px solid #1e2e1e;
-        }
-
-        .instruction {
-            margin-top: 12px;
-            background: #051f1e;
-            padding: 12px;
-            border-radius: 50px;
-            color: #fffec2;
-            font-size: 1.2rem;
-            text-align: center;
-            border: 3px solid #ffcd7e;
-        }
-
-        .reset-btn {
-            background: #be873b;
-            border: none;
-            border-bottom: 9px solid #6b4a24;
-            color: #011010;
-            font-size: 1.6rem;
+            justify-content: space-between;
+            font-size: 2.4rem;
             font-weight: bold;
-            padding: 12px 25px;
-            border-radius: 60px;
-            margin-top: 10px;
-            cursor: pointer;
+            color: #102c3a;
+            box-shadow: 0 12px 0 #6b421f, 0 15px 25px black;
             transition: 0.05s;
-            box-shadow: 0 8px 0 #584221;
-            letter-spacing: 8px;
+            cursor: grab;
+            touch-action: none;
+            border: 4px solid #ffeeb5;
+            position: relative;
+            z-index: 9999;
+            pointer-events: auto;
         }
 
-        .reset-btn:active {
-            transform: translateY(8px);
-            box-shadow: 0 2px 0 #584221;
+        .element-card:active {
+            cursor: grabbing;
+            transform: scale(1.02);
+            box-shadow: 0 8px 0 #6b421f, 0 18px 30px black;
+        }
+
+        .element-card span {
+            background: #1a4b3c;
+            color: white;
+            padding: 8px 22px;
+            border-radius: 60px;
+            font-size: 1.6rem;
+            border-bottom: 6px solid #0b2e25;
+        }
+
+        /* color coding by group — nonmetal, alkali, etc. */
+        .card-nonmetal { background: radial-gradient(#b3e0b0, #5f9e6b); border-bottom-color: #1f5420; }
+        .card-alkali { background: radial-gradient(#ffb5b5, #c75959); border-bottom-color: #712a2a; }
+        .card-alkaline { background: radial-gradient(#ffe0a3, #d89e4a); border-bottom-color: #7e5829; }
+        .card-halogen { background: radial-gradient(#c7b5ff, #816ac7); border-bottom-color: #45397a; }
+        .card-noble { background: radial-gradient(#a4e3e0, #479b9b); border-bottom-color: #1f5c5c; }
+
+        .reset-area {
+            margin-top: 16px;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+        }
+
+        .btn {
+            background: #dba443;
+            border: none;
+            border-bottom: 10px solid #7e5926;
+            font-size: 1.8rem;
+            font-weight: bold;
+            padding: 14px 40px;
+            border-radius: 80px;
+            color: #0c382b;
+            letter-spacing: 6px;
+            box-shadow: 0 10px 0 #5d3f1f;
+            transition: 0.05s;
+            cursor: pointer;
+        }
+
+        .btn:active {
+            transform: translateY(10px);
+            box-shadow: 0 2px 0 #5d3f1f;
             border-bottom-width: 4px;
         }
 
-        @media (max-width: 900px) {
-            .game-lab { height: 98vh; }
-            .element-card { width: 70px; height: 70px; font-size: 2.2rem; }
-            .name-target { font-size: 1.6rem; padding: 12px; }
+        .win-message {
+            background: #12312b;
+            padding: 14px 30px;
+            border-radius: 60px;
+            color: #ffef9e;
+            font-size: 1.7rem;
+            border: 4px solid #ffcf6e;
+            text-align: center;
         }
+
+        /* hover highlight for groups — interactive board adaptation */
+        .grid-cell[data-group="1"]:hover { background: #e6a2a2; border-color: #ffd966; }
+        .grid-cell[data-group="2"]:hover { background: #f0cf9c; border-color: #ffd966; }
+        .grid-cell[data-group="17"]:hover { background: #b6a2e6; border-color: #ffd966; }
+        .grid-cell[data-group="18"]:hover { background: #9fdfdf; border-color: #ffd966; }
+        .grid-cell[data-group="nonmetal"]:hover { background: #a1cf9b; border-color: #ffd966; }
     </style>
 </head>
 <body>
-<div class="game-lab">
-    <!-- header: score & title -->
-    <div class="title-area">
-        <h1>🧪 FALLING ELEMENTS</h1>
-        <div class="score-box" id="scoreDisplay">0</div>
-    </div>
-
-    <!-- main interactive board -->
-    <div class="play-zone">
-        <!-- left side: falling symbols sky -->
-        <div class="falling-sky" id="fallingSky">
-            <div id="elementsContainer" class="elements-container">
-                <!-- dynamic element cards injected here -->
+    <!-- SCREEN SIZE DETECTION - dynamic resize -->
+    <div class="game-container" id="gameContainer">
+        <div class="game-header">
+            <div class="title">⚛️ PERIODIC MATCH</div>
+            <div class="team-score">
+                <span class="score-badge">🏆 LEFT <span id="leftScore">0</span></span>
+                <span class="score-badge">🏆 RIGHT <span id="rightScore">0</span></span>
             </div>
         </div>
 
-        <!-- right dock: proper names (drop targets) -->
-        <div class="name-dock">
-            <h2>⚛️ DROP HERE</h2>
-            <div id="nameGrid" class="name-grid">
-                <!-- name targets created by js -->
+        <!-- main play area: periodic grid + draggable deck -->
+        <div class="play-area">
+            <!-- PERIODIC TABLE GRID (6 columns, simplified) -->
+            <div class="table-section">
+                <div class="grid-title">🔬 drop here →</div>
+                <div id="periodicGrid" class="periodic-grid">
+                    <!-- JS will inject cells -->
+                </div>
             </div>
-            <div class="instruction">
-                👆 drag symbol → correct name
+
+            <!-- ELEMENT DECK: floating element cards -->
+            <div class="element-deck">
+                <div class="deck-header">🧪 ELEMENT CARDS</div>
+                <div id="cardsContainer" class="cards-container">
+                    <!-- dynamic draggable cards -->
+                </div>
             </div>
+        </div>
+
+        <!-- difficulty & reset + win message -->
+        <div class="reset-area">
+            <button id="resetBtn" class="btn">↻ NEW ROUND</button>
+            <button id="nextRoundBtn" class="btn">➕ ADD ELEMENTS</button>
+        </div>
+        <div id="winMessage" class="win-message" style="margin-top: 16px;">
+            ⚡ Drag elements to correct cells. Left/Right team scores!
         </div>
     </div>
 
-    <!-- reset & new game -->
-    <button class="reset-btn" id="resetGame">↻ NEW ELEMENTS</button>
-</div>
+    <script>
+        (function() {
+            "use strict";
 
-<script>
-    (function() {
-        "use strict";
+            // ---------- PERIODIC ELEMENT DATA (simplified, color-coded) ----------
+            const ELEMENT_DATA = [
+                { symbol: "H", name: "Hydrogen", row: 1, col: 1, group: "nonmetal" },
+                { symbol: "He", name: "Helium", row: 1, col: 6, group: "noble" },
+                { symbol: "Li", name: "Lithium", row: 2, col: 1, group: "alkali" },
+                { symbol: "Be", name: "Beryllium", row: 2, col: 2, group: "alkaline" },
+                { symbol: "B", name: "Boron", row: 2, col: 3, group: "nonmetal" },
+                { symbol: "C", name: "Carbon", row: 2, col: 4, group: "nonmetal" },
+                { symbol: "N", name: "Nitrogen", row: 2, col: 5, group: "nonmetal" },
+                { symbol: "O", name: "Oxygen", row: 2, col: 6, group: "nonmetal" },
+                { symbol: "F", name: "Fluorine", row: 2, col: 7, group: "halogen" },
+                { symbol: "Ne", name: "Neon", row: 2, col: 8, group: "noble" },
+                { symbol: "Na", name: "Sodium", row: 3, col: 1, group: "alkali" },
+                { symbol: "Mg", name: "Magnesium", row: 3, col: 2, group: "alkaline" },
+                { symbol: "Al", name: "Aluminum", row: 3, col: 3, group: "nonmetal" },
+                { symbol: "Si", name: "Silicon", row: 3, col: 4, group: "nonmetal" },
+                { symbol: "P", name: "Phosphorus", row: 3, col: 5, group: "nonmetal" },
+                { symbol: "S", name: "Sulfur", row: 3, col: 6, group: "nonmetal" },
+                { symbol: "Cl", name: "Chlorine", row: 3, col: 7, group: "halogen" },
+                { symbol: "Ar", name: "Argon", row: 3, col: 8, group: "noble" }
+            ];
 
-        // ---------- CHEMISTRY DATA: symbol -> full name (and also reverse) ----------
-        const ELEMENTS = [
-            { symbol: "H", name: "Hydrogen" },
-            { symbol: "He", name: "Helium" },
-            { symbol: "Li", name: "Lithium" },
-            { symbol: "Be", name: "Beryllium" },
-            { symbol: "B", name: "Boron" },
-            { symbol: "C", name: "Carbon" },
-            { symbol: "N", name: "Nitrogen" },
-            { symbol: "O", name: "Oxygen" },
-            { symbol: "F", name: "Fluorine" },
-            { symbol: "Ne", name: "Neon" },
-            { symbol: "Na", name: "Sodium" },
-            { symbol: "Mg", name: "Magnesium" },
-            { symbol: "Al", name: "Aluminum" },
-            { symbol: "Si", name: "Silicon" },
-            { symbol: "P", name: "Phosphorus" },
-            { symbol: "S", name: "Sulfur" },
-            { symbol: "Cl", name: "Chlorine" },
-            { symbol: "Ar", name: "Argon" },
-            { symbol: "K", name: "Potassium" },
-            { symbol: "Ca", name: "Calcium" }
-        ];
+            // Difficulty progression: rounds 1,2,3 add more elements
+            const ROUND_LEVELS = [6, 10, 14, 18]; // how many elements appear
 
-        // we'll pick 6 random elements per round (to fit dock nicely)
-        const ROUND_ELEMENTS_COUNT = 6;
+            // GAME STATE
+            let currentRound = 0;          // 0-indexed
+            let activeElements = [];       // subset of ELEMENT_DATA
+            let placedElements = [];       // ids of correctly placed elements
+            let leftTeamScore = 0;
+            let rightTeamScore = 0;
+            let currentTeam = 'left';      // alternate turns (relay race)
+            let elementCounter = 0;
 
-        // current active elements and their state
-        let currentElements = [];     // { symbol, name, elementId, top, left, isMatched, ... }
-        let elementCounter = 0;
-        let score = 0;
+            // Drag state
+            let draggingCard = null;
+            let dragElementId = null;
+            let dragStartX = 0, dragStartY = 0;
+            let initialLeft = 0, initialTop = 0;
 
-        // DOM elements
-        const container = document.getElementById('elementsContainer');
-        const nameGrid = document.getElementById('nameGrid');
-        const scoreDisplay = document.getElementById('scoreDisplay');
-        const skyDiv = document.getElementById('fallingSky');
+            // DOM elements
+            const gridContainer = document.getElementById('periodicGrid');
+            const cardsContainer = document.getElementById('cardsContainer');
+            const leftScoreEl = document.getElementById('leftScore');
+            const rightScoreEl = document.getElementById('rightScore');
+            const winMsg = document.getElementById('winMessage');
+            const resetBtn = document.getElementById('resetBtn');
+            const nextBtn = document.getElementById('nextRoundBtn');
 
-        // drag state
-        let draggingElement = null;
-        let dragStartX = 0, dragStartY = 0;
-        let initialLeft = 0, initialTop = 0;
-        let currentCard = null;
-        let elementIdDragging = null;
+            // ---------- SCREEN SIZE DETECTION: ensure grid fits ----------
+            function adjustGridToScreen() {
+                const container = document.querySelector('.game-container');
+                const vw = window.innerWidth;
+                const vh = window.innerHeight;
+                // nothing critical, but we ensure grid columns are stable
+                let grid = document.querySelector('.periodic-grid');
+                if (grid) {
+                    if (vw < 900) {
+                        grid.style.gap = '8px';
+                    } else {
+                        grid.style.gap = '12px';
+                    }
+                }
+            }
+            window.addEventListener('resize', adjustGridToScreen);
 
-        // ---------- helper: shuffle and pick random subset ----------
-        function pickRandomElements(count) {
-            const shuffled = [...ELEMENTS].sort(() => Math.random() - 0.5);
-            return shuffled.slice(0, count).map((el, index) => ({
-                id: elementCounter++,
-                symbol: el.symbol,
-                name: el.name,
-                top: 10 + Math.random() * 50,        // random starting position %
-                left: 10 + Math.random() * 70,
-                isMatched: false,
-                speed: 0.4 + Math.random() * 0.6,     // fall speed factor (downward drift)
-            }));
-        }
+            // ---------- CREATE PERIODIC GRID CELLS (6x8 simplified) ----------
+            function buildGrid() {
+                gridContainer.innerHTML = '';
+                // we create 6 columns, 4 rows (but we support up to row 3, col 8)
+                for (let row = 1; row <= 4; row++) {
+                    for (let col = 1; col <= 8; col++) {
+                        if (row === 1 && col > 6) continue; // He at col6, skip extra
+                        if (row === 1 && col === 2) continue; // no element
+                        if (row === 1 && col === 3) continue;
+                        if (row === 1 && col === 4) continue;
+                        if (row === 1 && col === 5) continue;
+                        if (row === 4 && col > 4) continue; // keep simple
+                        
+                        const cell = document.createElement('div');
+                        cell.className = 'grid-cell';
+                        cell.dataset.row = row;
+                        cell.dataset.col = col;
+                        cell.dataset.occupied = 'false';
+                        cell.dataset.elementId = '';
+                        
+                        // group attribute for hover highlighting
+                        let group = '';
+                        const el = ELEMENT_DATA.find(e => e.row === row && e.col === col);
+                        if (el) group = el.group;
+                        cell.dataset.group = group || '';
+                        
+                        // if there is a default element, we will fill later when placed
+                        gridContainer.appendChild(cell);
+                    }
+                }
+            }
 
-        // ---------- initialise / reset board ----------
-        function initGame() {
-            // stop all animations, clear container
-            container.innerHTML = '';
-            nameGrid.innerHTML = '';
-            // reset score
-            score = 0;
-            updateScore();
+            // ---------- START ROUND: load active elements ----------
+            function loadRound(roundIndex) {
+                const count = ROUND_LEVELS[Math.min(roundIndex, ROUND_LEVELS.length - 1)];
+                // pick first 'count' elements from ELEMENT_DATA
+                activeElements = ELEMENT_DATA.slice(0, count).map(el => ({
+                    ...el,
+                    id: elementCounter++,
+                    isPlaced: false,
+                }));
+                placedElements = [];
+                
+                // clear all cells
+                document.querySelectorAll('.grid-cell').forEach(cell => {
+                    cell.innerHTML = '';
+                    cell.classList.remove('cell-occupied');
+                    cell.dataset.occupied = 'false';
+                    cell.dataset.elementId = '';
+                });
 
-            // pick fresh random elements
-            currentElements = pickRandomElements(ROUND_ELEMENTS_COUNT);
+                // render draggable cards (only unplaced)
+                renderCards();
+                updateWinMessage();
+            }
 
-            // create falling cards for each element
-            currentElements.forEach(el => {
-                createElementCard(el);
-            });
+            // ---------- RENDER ELEMENT CARDS (with color coding) ----------
+            function renderCards() {
+                cardsContainer.innerHTML = '';
+                const unplaced = activeElements.filter(el => !el.isPlaced);
+                
+                unplaced.forEach(el => {
+                    const card = document.createElement('div');
+                    card.className = `element-card card-${el.group}`;
+                    card.id = `drag-${el.id}`;
+                    card.dataset.symbol = el.symbol;
+                    card.dataset.elementId = el.id;
+                    card.dataset.row = el.row;
+                    card.dataset.col = el.col;
+                    card.innerHTML = `${el.symbol} <span>${el.name}</span>`;
+                    
+                    // make draggable
+                    card.draggable = false;
+                    card.addEventListener('pointerdown', (e) => startDrag(e, card, el.id));
+                    
+                    cardsContainer.appendChild(card);
+                });
+            }
 
-            // create name targets in dock (one per element in current round)
-            // shuffle name order so it's not in same order as falling
-            const shuffledNames = [...currentElements].sort(() => Math.random() - 0.5);
-            shuffledNames.forEach(el => {
-                createNameTarget(el.name, el.symbol);
-            });
-
-            // start falling animation
-            requestAnimationFrame(fallLoop);
-        }
-
-        // ----- create draggable element card (symbol) -----
-        function createElementCard(el) {
-            const card = document.createElement('div');
-            card.className = 'element-card';
-            card.id = `elem-${el.id}`;
-            card.textContent = el.symbol;
-            card.style.top = el.top + '%';
-            card.style.left = el.left + '%';
-            card.style.position = 'absolute';
-            card.draggable = false;  // use custom touch drag
-
-            // make interactive for mouse and touch
-            card.addEventListener('pointerdown', (e) => {
+            // ---------- DRAG API (touch + mouse) ----------
+            function startDrag(e, card, elemId) {
                 e.preventDefault();
-                if (el.isMatched) return; // already matched, can't drag
-                startDrag(e, card, el.id);
-            });
+                e.stopPropagation();
+                
+                const el = activeElements.find(el => el.id === elemId);
+                if (!el || el.isPlaced) return;
 
-            // attach to container
-            container.appendChild(card);
-        }
+                draggingCard = card;
+                dragElementId = elemId;
+                card.setPointerCapture(e.pointerId);
 
-        // ----- create name target (drop zone) -----
-        function createNameTarget(fullName, symbol) {
-            const targetDiv = document.createElement('div');
-            targetDiv.className = 'name-target';
-            targetDiv.setAttribute('data-symbol', symbol);
-            targetDiv.setAttribute('data-name', fullName);
-            targetDiv.innerHTML = `${fullName} <span>${symbol}</span>`;
+                const rect = card.getBoundingClientRect();
+                const containerRect = document.querySelector('.game-container').getBoundingClientRect();
+                
+                // store initial positions (relative to viewport)
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                
+                // get current left/top percentage relative to container
+                const computed = window.getComputedStyle(card);
+                initialLeft = parseFloat(computed.left) || 0;
+                initialTop = parseFloat(computed.top) || 0;
 
-            // highlight if matched? we handle via pointerup detection.
-            nameGrid.appendChild(targetDiv);
-        }
-
-        // ---------- DRAG CONTROL (pointer, touch) ----------
-        function startDrag(event, card, elemId) {
-            if (currentElements.find(el => el.id === elemId)?.isMatched) return;
-
-            // find element in array
-            const el = currentElements.find(el => el.id === elemId);
-            if (!el || el.isMatched) return;
-
-            draggingElement = card;
-            elementIdDragging = elemId;
-            card.setPointerCapture(event.pointerId);
-
-            // get initial positions
-            const rect = card.getBoundingClientRect();
-            const skyRect = skyDiv.getBoundingClientRect();
-
-            // store initial % based positions
-            initialLeft = parseFloat(card.style.left) || el.left;
-            initialTop = parseFloat(card.style.top) || el.top;
-
-            dragStartX = event.clientX;
-            dragStartY = event.clientY;
-
-            // stop automatic falling while dragging (we'll pause fall for this element)
-            el.isDragging = true;
-
-            card.addEventListener('pointermove', onDrag);
-            card.addEventListener('pointerup', onDragEnd);
-            card.addEventListener('pointercancel', onDragEnd);
-        }
-
-        function onDrag(e) {
-            e.preventDefault();
-            if (!draggingElement) return;
-
-            const skyRect = skyDiv.getBoundingClientRect();
-            const deltaX = e.clientX - dragStartX;
-            const deltaY = e.clientY - dragStartY;
-
-            // convert % move relative to sky dimensions
-            let newLeft = initialLeft + (deltaX / skyRect.width) * 100;
-            let newTop = initialTop + (deltaY / skyRect.height) * 100;
-
-            // clamp inside sky (with margin)
-            newLeft = Math.min(90, Math.max(2, newLeft));
-            newTop = Math.min(90, Math.max(2, newTop));
-
-            draggingElement.style.left = newLeft + '%';
-            draggingElement.style.top = newTop + '%';
-
-            // update model
-            const el = currentElements.find(el => el.id === elementIdDragging);
-            if (el) {
-                el.left = newLeft;
-                el.top = newTop;
-            }
-        }
-
-        function onDragEnd(e) {
-            e.preventDefault();
-            if (!draggingElement) {
-                return;
+                // attach global listeners
+                window.addEventListener('pointermove', onDrag);
+                window.addEventListener('pointerup', onDragEnd);
+                window.addEventListener('pointercancel', onDragEnd);
             }
 
-            // check drop: which name target is under the card?
-            const cardRect = draggingElement.getBoundingClientRect();
-            const cardCenterX = (cardRect.left + cardRect.right) / 2;
-            const cardCenterY = (cardRect.top + cardRect.bottom) / 2;
+            function onDrag(e) {
+                e.preventDefault();
+                if (!draggingCard) return;
 
-            // get all name targets
-            const targets = document.querySelectorAll('.name-target');
-            let matched = false;
-            let targetSymbol = null;
-            let targetElement = null;
+                const deltaX = e.clientX - dragStartX;
+                const deltaY = e.clientY - dragStartY;
 
-            for (let target of targets) {
-                const rect = target.getBoundingClientRect();
-                if (cardCenterX >= rect.left && cardCenterX <= rect.right &&
-                    cardCenterY >= rect.top && cardCenterY <= rect.bottom) {
-                    // potential drop
-                    const expectedSymbol = target.getAttribute('data-symbol');
-                    const draggedElem = currentElements.find(el => el.id === elementIdDragging);
-                    if (draggedElem && !draggedElem.isMatched && draggedElem.symbol === expectedSymbol) {
-                        // CORRECT MATCH!
-                        matched = true;
-                        targetSymbol = expectedSymbol;
-                        targetElement = target;
+                // move with transform for smoothness (no clipping)
+                draggingCard.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+                draggingCard.style.zIndex = '10000';
+            }
+
+            function onDragEnd(e) {
+                e.preventDefault();
+                if (!draggingCard || dragElementId === null) {
+                    cleanup();
+                    return;
+                }
+
+                const el = activeElements.find(el => el.id === dragElementId);
+                if (!el) { cleanup(); return; }
+
+                // get card center position
+                const cardRect = draggingCard.getBoundingClientRect();
+                const centerX = (cardRect.left + cardRect.right) / 2;
+                const centerY = (cardRect.top + cardRect.bottom) / 2;
+
+                // find grid cell under center
+                const elementsAtPoint = document.elementsFromPoint(centerX, centerY);
+                let targetCell = null;
+                for (let elem of elementsAtPoint) {
+                    if (elem.classList && elem.classList.contains('grid-cell')) {
+                        targetCell = elem;
                         break;
                     }
                 }
-            }
 
-            if (matched) {
-                // mark element as matched, remove card, increment score
-                const el = currentElements.find(el => el.id === elementIdDragging);
-                if (el && !el.isMatched) {
-                    el.isMatched = true;
-                    // remove card nicely
-                    if (draggingElement) draggingElement.remove();
-                    // style target as matched
-                    if (targetElement) {
-                        targetElement.style.background = '#a5d6a5';
-                        targetElement.style.borderBottomColor = '#2d6b2d';
-                        targetElement.style.opacity = '0.8';
-                        targetElement.style.textDecoration = 'line-through 3px #164a16';
+                let matched = false;
+                if (targetCell) {
+                    const targetRow = parseInt(targetCell.dataset.row);
+                    const targetCol = parseInt(targetCell.dataset.col);
+                    
+                    if (targetRow === el.row && targetCol === el.col && targetCell.dataset.occupied === 'false') {
+                        // CORRECT MATCH!
+                        matched = true;
+                        
+                        // mark element as placed
+                        el.isPlaced = true;
+                        placedElements.push(el.id);
+                        
+                        // update cell
+                        targetCell.dataset.occupied = 'true';
+                        targetCell.dataset.elementId = el.id;
+                        targetCell.classList.add('cell-occupied');
+                        targetCell.innerHTML = `<div class="element-symbol">${el.symbol}</div>
+                                                <div class="element-name">${el.name}</div>`;
+                        
+                        // scoring: alternate teams
+                        if (currentTeam === 'left') {
+                            leftTeamScore++;
+                            currentTeam = 'right';
+                        } else {
+                            rightTeamScore++;
+                            currentTeam = 'left';
+                        }
+                        updateScores();
+                        
+                        // remove card
+                        draggingCard.remove();
                     }
-                    // increase score
-                    score++;
-                    updateScore();
-
-                    // remove from currentElements active list? we keep as matched
-                    // but we remove the card already
                 }
-            } else {
-                // drop failed: snap back to original position? or better: reset to stored fallback?
-                const el = currentElements.find(el => el.id === elementIdDragging);
-                if (el) {
-                    // return to last good position (top/left from model, but not isDragging)
-                    draggingElement.style.left = el.left + '%';
-                    draggingElement.style.top = el.top + '%';
+
+                if (!matched) {
+                    // reset card position
+                    draggingCard.style.transform = 'translate(0, 0)';
+                }
+
+                cleanup();
+                renderCards(); // refresh cards list (removes placed ones)
+                checkRoundComplete();
+
+                function cleanup() {
+                    window.removeEventListener('pointermove', onDrag);
+                    window.removeEventListener('pointerup', onDragEnd);
+                    window.removeEventListener('pointercancel', onDragEnd);
+                    
+                    if (draggingCard) {
+                        draggingCard.style.transform = 'translate(0, 0)';
+                        draggingCard.style.zIndex = '';
+                    }
+                    draggingCard = null;
+                    dragElementId = null;
                 }
             }
 
-            // clean up drag
-            const el = currentElements.find(el => el.id === elementIdDragging);
-            if (el) el.isDragging = false;
-
-            draggingElement.removeEventListener('pointermove', onDrag);
-            draggingElement.removeEventListener('pointerup', onDragEnd);
-            draggingElement.removeEventListener('pointercancel', onDragEnd);
-            draggingElement = null;
-            elementIdDragging = null;
-        }
-
-        // ---------- FALL LOOP: drift downward slowly ----------
-        function fallLoop() {
-            // only move non-matched, non-dragging elements
-            currentElements.forEach(el => {
-                if (el.isMatched) return;
-                if (el.isDragging) return; // don't fall while dragging
-
-                // slowly increase top % (fall down)
-                let newTop = el.top + 0.06 + (el.speed * 0.08);  // gentle fall
-                if (newTop > 86) newTop = 86; // stop before bottom edge
-                el.top = newTop;
-
-                const card = document.getElementById(`elem-${el.id}`);
-                if (card) {
-                    card.style.top = newTop + '%';
-                    card.style.left = el.left + '%'; // preserve left
-                }
-            });
-
-            requestAnimationFrame(fallLoop);
-        }
-
-        function updateScore() {
-            scoreDisplay.textContent = score;
-            // if all 6 matched? optional celebration
-            const matchedCount = currentElements.filter(el => el.isMatched).length;
-            if (matchedCount === ROUND_ELEMENTS_COUNT && currentElements.length === ROUND_ELEMENTS_COUNT) {
-                setTimeout(() => {
-                    alert('🎉 Perfect! You matched all elements!');
-                }, 50);
+            function updateScores() {
+                leftScoreEl.textContent = leftTeamScore;
+                rightScoreEl.textContent = rightTeamScore;
             }
-        }
 
-        // ---------- RESET GAME ----------
-        function resetGame() {
-            // clean up any dragging state
-            draggingElement = null;
-            // rebuild everything
-            initGame();
-        }
+            function updateWinMessage() {
+                const placedCount = activeElements.filter(el => el.isPlaced).length;
+                const total = activeElements.length;
+                winMsg.innerHTML = `⚛️ ${placedCount}/${total} elements placed • Team turn: ${currentTeam === 'left' ? '🔵 LEFT' : '🔴 RIGHT'}`;
+            }
 
-        // ---------- initialise event listeners ----------
-        window.addEventListener('load', () => {
-            initGame();
-        });
+            function checkRoundComplete() {
+                const placedCount = activeElements.filter(el => el.isPlaced).length;
+                const total = activeElements.length;
+                updateWinMessage();
+                
+                if (placedCount === total && total > 0) {
+                    winMsg.innerHTML = '🎉 ROUND COMPLETE! Click "ADD ELEMENTS" for more! 🎉';
+                }
+            }
 
-        const resetBtn = document.getElementById('resetGame');
-        resetBtn.addEventListener('click', resetGame);
+            // ---------- RESET / NEXT ROUND ----------
+            function resetGame() {
+                leftTeamScore = 0;
+                rightTeamScore = 0;
+                currentTeam = 'left';
+                currentRound = 0;
+                updateScores();
+                buildGrid();
+                loadRound(currentRound);
+            }
 
-        // prevent default touch actions on sky and targets to avoid scrolling while dragging
-        skyDiv.addEventListener('touchstart', (e) => { if (e.target.classList.contains('element-card')) e.preventDefault(); });
-        nameGrid.addEventListener('touchstart', (e) => e.preventDefault()); // but we need droppable, fine
-    })();
-</script>
+            function nextRound() {
+                currentRound++;
+                if (currentRound >= ROUND_LEVELS.length) currentRound = ROUND_LEVELS.length - 1;
+                // preserve scores, but load more elements
+                loadRound(currentRound);
+                updateWinMessage();
+            }
+
+            // ---------- INITIALIZE ----------
+            function init() {
+                // first, detect screen size
+                adjustGridToScreen();
+                buildGrid();
+                resetGame(); // sets scores and first round
+            }
+
+            // Event listeners
+            resetBtn.addEventListener('click', resetGame);
+            nextBtn.addEventListener('click', nextRound);
+
+            // prevent touch scrolling on cards
+            window.addEventListener('touchstart', (e) => {
+                if (e.target.classList.contains('element-card')) e.preventDefault();
+            }, { passive: false });
+
+            // start everything
+            init();
+        })();
+    </script>
 </body>
 </html>
