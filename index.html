@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=no">
+    <title>falling elements · chemistry match</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            user-select: none; /* better for touch */
+        }
+
+        body {
+            background: linear-gradient(145deg, #0b3b3f, #1d5a5c);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            touch-action: pan-y; /* preserve vertical scroll if needed, but we want game board */
+        }
+
+        /* main game board — fits one page */
+        .game-lab {
+            max-width: 1300px;
+            width: 100%;
+            background: #2a6b6e;
+            background-image: radial-gradient(circle at 20% 30%, #389599, #1d5457);
+            border-radius: 50px 50px 30px 30px;
+            box-shadow: 0 20px 30px #0a2e30;
+            padding: 16px 18px;
+            border-bottom: 10px solid #0e494b;
+            display: flex;
+            flex-direction: column;
+            height: 95vh; /* fit one screen */
+            max-height: 950px;
+        }
+
+        .title-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #052c2e;
+            padding: 10px 25px;
+            border-radius: 60px;
+            color: #f5ffb2;
+            border-bottom: 6px solid #698b4c;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .title-area h1 {
+            font-size: 1.8rem;
+            letter-spacing: 6px;
+            text-shadow: 0 3px 0 #1f4935;
+        }
+
+        .score-box {
+            background: #0b1f1c;
+            padding: 8px 28px;
+            border-radius: 50px;
+            font-size: 1.7rem;
+            font-weight: bold;
+            color: #ffefb2;
+            box-shadow: inset 0 0 0 3px #d8e476;
+        }
+
+        /* interactive zone: falling area + name dock */
+        .play-zone {
+            display: flex;
+            flex: 1;
+            min-height: 0;  /* flex restriction */
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        /* left side: falling sky */
+        .falling-sky {
+            flex: 2 1 500px;
+            background: #a1d6d0;
+            background: linear-gradient(180deg, #afe0dc, #6daaa5);
+            border-radius: 60px 60px 30px 30px;
+            box-shadow: inset 0 -10px 0 #367c7a, inset 0 0 30px #c2ffff;
+            border: 5px solid #fefed7;
+            position: relative;
+            overflow: hidden;  /* falling elements confined */
+            min-height: 300px;
+            touch-action: none; /* we handle dragging */
+        }
+
+        /* container for falling element images */
+        .elements-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* falling element symbol card */
+        .element-card {
+            position: absolute;
+            width: 85px;
+            height: 85px;
+            background: radial-gradient(circle at 30% 30%, #ffeab5, #fbcf7c);
+            border-radius: 30% 70% 50% 50% / 40% 40% 60% 60%;
+            box-shadow: 0 12px 0 #b87333, 0 15px 25px black, inset 0 -5px 8px rgba(0,0,0,0.2);
+            border: 5px solid #ffd78c;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.8rem;
+            font-weight: 800;
+            color: #0a3055;
+            text-shadow: 0 2px 5px white;
+            transform: rotate(5deg);
+            transition: transform 0.1s;
+            cursor: grab;
+            touch-action: none;
+            z-index: 20;
+        }
+
+        .element-card:active {
+            cursor: grabbing;
+            transform: scale(1.08) rotate(8deg);
+        }
+
+        /* bottom dock: element names — interactive targets */
+        .name-dock {
+            flex: 1 1 260px;
+            background: #2a554b;
+            background: linear-gradient(145deg, #3e6b60, #1f463f);
+            border-radius: 50px 50px 30px 30px;
+            padding: 16px 12px;
+            box-shadow: inset 0 -8px 0 #14322e, inset 0 4px 12px #c6ffcf;
+            border: 4px solid #fbffbc;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .name-dock h2 {
+            color: #fffed8;
+            text-align: center;
+            font-size: 1.7rem;
+            border-bottom: 5px solid #fedb5f;
+            padding-bottom: 10px;
+            margin-bottom: 12px;
+            text-shadow: 0 3px 0 #215d42;
+            letter-spacing: 3px;
+        }
+
+        .name-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        /* each name target — drop zone */
+        .name-target {
+            background: #ebf8d9;
+            padding: 18px 12px;
+            border-radius: 50px;
+            font-size: 1.9rem;
+            font-weight: bold;
+            color: #022c2a;
+            text-align: center;
+            border-bottom: 9px solid #8fa34b;
+            box-shadow: inset 0 2px 10px white, 0 8px 0 #4e6130;
+            transition: 0.05s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            letter-spacing: 2px;
+            background: radial-gradient(circle at 10% 40%, #ffffdd, #cfdba1);
+            touch-action: none; /* avoid scroll interference */
+        }
+
+        .name-target span {
+            background: #3e4f2b;
+            color: #fffed1;
+            padding: 5px 20px;
+            border-radius: 40px;
+            font-size: 1.6rem;
+            border-bottom: 5px solid #1e2e1e;
+        }
+
+        .instruction {
+            margin-top: 12px;
+            background: #051f1e;
+            padding: 12px;
+            border-radius: 50px;
+            color: #fffec2;
+            font-size: 1.2rem;
+            text-align: center;
+            border: 3px solid #ffcd7e;
+        }
+
+        .reset-btn {
+            background: #be873b;
+            border: none;
+            border-bottom: 9px solid #6b4a24;
+            color: #011010;
+            font-size: 1.6rem;
+            font-weight: bold;
+            padding: 12px 25px;
+            border-radius: 60px;
+            margin-top: 10px;
+            cursor: pointer;
+            transition: 0.05s;
+            box-shadow: 0 8px 0 #584221;
+            letter-spacing: 8px;
+        }
+
+        .reset-btn:active {
+            transform: translateY(8px);
+            box-shadow: 0 2px 0 #584221;
+            border-bottom-width: 4px;
+        }
+
+        @media (max-width: 900px) {
+            .game-lab { height: 98vh; }
+            .element-card { width: 70px; height: 70px; font-size: 2.2rem; }
+            .name-target { font-size: 1.6rem; padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-lab">
+    <!-- header: score & title -->
+    <div class="title-area">
+        <h1>🧪 FALLING ELEMENTS</h1>
+        <div class="score-box" id="scoreDisplay">0</div>
+    </div>
+
+    <!-- main interactive board -->
+    <div class="play-zone">
+        <!-- left side: falling symbols sky -->
+        <div class="falling-sky" id="fallingSky">
+            <div id="elementsContainer" class="elements-container">
+                <!-- dynamic element cards injected here -->
+            </div>
+        </div>
+
+        <!-- right dock: proper names (drop targets) -->
+        <div class="name-dock">
+            <h2>⚛️ DROP HERE</h2>
+            <div id="nameGrid" class="name-grid">
+                <!-- name targets created by js -->
+            </div>
+            <div class="instruction">
+                👆 drag symbol → correct name
+            </div>
+        </div>
+    </div>
+
+    <!-- reset & new game -->
+    <button class="reset-btn" id="resetGame">↻ NEW ELEMENTS</button>
+</div>
+
+<script>
+    (function() {
+        "use strict";
+
+        // ---------- CHEMISTRY DATA: symbol -> full name (and also reverse) ----------
+        const ELEMENTS = [
+            { symbol: "H", name: "Hydrogen" },
+            { symbol: "He", name: "Helium" },
+            { symbol: "Li", name: "Lithium" },
+            { symbol: "Be", name: "Beryllium" },
+            { symbol: "B", name: "Boron" },
+            { symbol: "C", name: "Carbon" },
+            { symbol: "N", name: "Nitrogen" },
+            { symbol: "O", name: "Oxygen" },
+            { symbol: "F", name: "Fluorine" },
+            { symbol: "Ne", name: "Neon" },
+            { symbol: "Na", name: "Sodium" },
+            { symbol: "Mg", name: "Magnesium" },
+            { symbol: "Al", name: "Aluminum" },
+            { symbol: "Si", name: "Silicon" },
+            { symbol: "P", name: "Phosphorus" },
+            { symbol: "S", name: "Sulfur" },
+            { symbol: "Cl", name: "Chlorine" },
+            { symbol: "Ar", name: "Argon" },
+            { symbol: "K", name: "Potassium" },
+            { symbol: "Ca", name: "Calcium" }
+        ];
+
+        // we'll pick 6 random elements per round (to fit dock nicely)
+        const ROUND_ELEMENTS_COUNT = 6;
+
+        // current active elements and their state
+        let currentElements = [];     // { symbol, name, elementId, top, left, isMatched, ... }
+        let elementCounter = 0;
+        let score = 0;
+
+        // DOM elements
+        const container = document.getElementById('elementsContainer');
+        const nameGrid = document.getElementById('nameGrid');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const skyDiv = document.getElementById('fallingSky');
+
+        // drag state
+        let draggingElement = null;
+        let dragStartX = 0, dragStartY = 0;
+        let initialLeft = 0, initialTop = 0;
+        let currentCard = null;
+        let elementIdDragging = null;
+
+        // ---------- helper: shuffle and pick random subset ----------
+        function pickRandomElements(count) {
+            const shuffled = [...ELEMENTS].sort(() => Math.random() - 0.5);
+            return shuffled.slice(0, count).map((el, index) => ({
+                id: elementCounter++,
+                symbol: el.symbol,
+                name: el.name,
+                top: 10 + Math.random() * 50,        // random starting position %
+                left: 10 + Math.random() * 70,
+                isMatched: false,
+                speed: 0.4 + Math.random() * 0.6,     // fall speed factor (downward drift)
+            }));
+        }
+
+        // ---------- initialise / reset board ----------
+        function initGame() {
+            // stop all animations, clear container
+            container.innerHTML = '';
+            nameGrid.innerHTML = '';
+            // reset score
+            score = 0;
+            updateScore();
+
+            // pick fresh random elements
+            currentElements = pickRandomElements(ROUND_ELEMENTS_COUNT);
+
+            // create falling cards for each element
+            currentElements.forEach(el => {
+                createElementCard(el);
+            });
+
+            // create name targets in dock (one per element in current round)
+            // shuffle name order so it's not in same order as falling
+            const shuffledNames = [...currentElements].sort(() => Math.random() - 0.5);
+            shuffledNames.forEach(el => {
+                createNameTarget(el.name, el.symbol);
+            });
+
+            // start falling animation
+            requestAnimationFrame(fallLoop);
+        }
+
+        // ----- create draggable element card (symbol) -----
+        function createElementCard(el) {
+            const card = document.createElement('div');
+            card.className = 'element-card';
+            card.id = `elem-${el.id}`;
+            card.textContent = el.symbol;
+            card.style.top = el.top + '%';
+            card.style.left = el.left + '%';
+            card.style.position = 'absolute';
+            card.draggable = false;  // use custom touch drag
+
+            // make interactive for mouse and touch
+            card.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                if (el.isMatched) return; // already matched, can't drag
+                startDrag(e, card, el.id);
+            });
+
+            // attach to container
+            container.appendChild(card);
+        }
+
+        // ----- create name target (drop zone) -----
+        function createNameTarget(fullName, symbol) {
+            const targetDiv = document.createElement('div');
+            targetDiv.className = 'name-target';
+            targetDiv.setAttribute('data-symbol', symbol);
+            targetDiv.setAttribute('data-name', fullName);
+            targetDiv.innerHTML = `${fullName} <span>${symbol}</span>`;
+
+            // highlight if matched? we handle via pointerup detection.
+            nameGrid.appendChild(targetDiv);
+        }
+
+        // ---------- DRAG CONTROL (pointer, touch) ----------
+        function startDrag(event, card, elemId) {
+            if (currentElements.find(el => el.id === elemId)?.isMatched) return;
+
+            // find element in array
+            const el = currentElements.find(el => el.id === elemId);
+            if (!el || el.isMatched) return;
+
+            draggingElement = card;
+            elementIdDragging = elemId;
+            card.setPointerCapture(event.pointerId);
+
+            // get initial positions
+            const rect = card.getBoundingClientRect();
+            const skyRect = skyDiv.getBoundingClientRect();
+
+            // store initial % based positions
+            initialLeft = parseFloat(card.style.left) || el.left;
+            initialTop = parseFloat(card.style.top) || el.top;
+
+            dragStartX = event.clientX;
+            dragStartY = event.clientY;
+
+            // stop automatic falling while dragging (we'll pause fall for this element)
+            el.isDragging = true;
+
+            card.addEventListener('pointermove', onDrag);
+            card.addEventListener('pointerup', onDragEnd);
+            card.addEventListener('pointercancel', onDragEnd);
+        }
+
+        function onDrag(e) {
+            e.preventDefault();
+            if (!draggingElement) return;
+
+            const skyRect = skyDiv.getBoundingClientRect();
+            const deltaX = e.clientX - dragStartX;
+            const deltaY = e.clientY - dragStartY;
+
+            // convert % move relative to sky dimensions
+            let newLeft = initialLeft + (deltaX / skyRect.width) * 100;
+            let newTop = initialTop + (deltaY / skyRect.height) * 100;
+
+            // clamp inside sky (with margin)
+            newLeft = Math.min(90, Math.max(2, newLeft));
+            newTop = Math.min(90, Math.max(2, newTop));
+
+            draggingElement.style.left = newLeft + '%';
+            draggingElement.style.top = newTop + '%';
+
+            // update model
+            const el = currentElements.find(el => el.id === elementIdDragging);
+            if (el) {
+                el.left = newLeft;
+                el.top = newTop;
+            }
+        }
+
+        function onDragEnd(e) {
+            e.preventDefault();
+            if (!draggingElement) {
+                return;
+            }
+
+            // check drop: which name target is under the card?
+            const cardRect = draggingElement.getBoundingClientRect();
+            const cardCenterX = (cardRect.left + cardRect.right) / 2;
+            const cardCenterY = (cardRect.top + cardRect.bottom) / 2;
+
+            // get all name targets
+            const targets = document.querySelectorAll('.name-target');
+            let matched = false;
+            let targetSymbol = null;
+            let targetElement = null;
+
+            for (let target of targets) {
+                const rect = target.getBoundingClientRect();
+                if (cardCenterX >= rect.left && cardCenterX <= rect.right &&
+                    cardCenterY >= rect.top && cardCenterY <= rect.bottom) {
+                    // potential drop
+                    const expectedSymbol = target.getAttribute('data-symbol');
+                    const draggedElem = currentElements.find(el => el.id === elementIdDragging);
+                    if (draggedElem && !draggedElem.isMatched && draggedElem.symbol === expectedSymbol) {
+                        // CORRECT MATCH!
+                        matched = true;
+                        targetSymbol = expectedSymbol;
+                        targetElement = target;
+                        break;
+                    }
+                }
+            }
+
+            if (matched) {
+                // mark element as matched, remove card, increment score
+                const el = currentElements.find(el => el.id === elementIdDragging);
+                if (el && !el.isMatched) {
+                    el.isMatched = true;
+                    // remove card nicely
+                    if (draggingElement) draggingElement.remove();
+                    // style target as matched
+                    if (targetElement) {
+                        targetElement.style.background = '#a5d6a5';
+                        targetElement.style.borderBottomColor = '#2d6b2d';
+                        targetElement.style.opacity = '0.8';
+                        targetElement.style.textDecoration = 'line-through 3px #164a16';
+                    }
+                    // increase score
+                    score++;
+                    updateScore();
+
+                    // remove from currentElements active list? we keep as matched
+                    // but we remove the card already
+                }
+            } else {
+                // drop failed: snap back to original position? or better: reset to stored fallback?
+                const el = currentElements.find(el => el.id === elementIdDragging);
+                if (el) {
+                    // return to last good position (top/left from model, but not isDragging)
+                    draggingElement.style.left = el.left + '%';
+                    draggingElement.style.top = el.top + '%';
+                }
+            }
+
+            // clean up drag
+            const el = currentElements.find(el => el.id === elementIdDragging);
+            if (el) el.isDragging = false;
+
+            draggingElement.removeEventListener('pointermove', onDrag);
+            draggingElement.removeEventListener('pointerup', onDragEnd);
+            draggingElement.removeEventListener('pointercancel', onDragEnd);
+            draggingElement = null;
+            elementIdDragging = null;
+        }
+
+        // ---------- FALL LOOP: drift downward slowly ----------
+        function fallLoop() {
+            // only move non-matched, non-dragging elements
+            currentElements.forEach(el => {
+                if (el.isMatched) return;
+                if (el.isDragging) return; // don't fall while dragging
+
+                // slowly increase top % (fall down)
+                let newTop = el.top + 0.06 + (el.speed * 0.08);  // gentle fall
+                if (newTop > 86) newTop = 86; // stop before bottom edge
+                el.top = newTop;
+
+                const card = document.getElementById(`elem-${el.id}`);
+                if (card) {
+                    card.style.top = newTop + '%';
+                    card.style.left = el.left + '%'; // preserve left
+                }
+            });
+
+            requestAnimationFrame(fallLoop);
+        }
+
+        function updateScore() {
+            scoreDisplay.textContent = score;
+            // if all 6 matched? optional celebration
+            const matchedCount = currentElements.filter(el => el.isMatched).length;
+            if (matchedCount === ROUND_ELEMENTS_COUNT && currentElements.length === ROUND_ELEMENTS_COUNT) {
+                setTimeout(() => {
+                    alert('🎉 Perfect! You matched all elements!');
+                }, 50);
+            }
+        }
+
+        // ---------- RESET GAME ----------
+        function resetGame() {
+            // clean up any dragging state
+            draggingElement = null;
+            // rebuild everything
+            initGame();
+        }
+
+        // ---------- initialise event listeners ----------
+        window.addEventListener('load', () => {
+            initGame();
+        });
+
+        const resetBtn = document.getElementById('resetGame');
+        resetBtn.addEventListener('click', resetGame);
+
+        // prevent default touch actions on sky and targets to avoid scrolling while dragging
+        skyDiv.addEventListener('touchstart', (e) => { if (e.target.classList.contains('element-card')) e.preventDefault(); });
+        nameGrid.addEventListener('touchstart', (e) => e.preventDefault()); // but we need droppable, fine
+    })();
+</script>
+</body>
+</html>
